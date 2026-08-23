@@ -105,7 +105,7 @@ L atom(const char *s) {
 /* ++ new: mark-sweep garbage collector registry stack size S, max depth of nested calls to eval() = S/3 */
 #define S 4096
 /* mark-sweep garbage collector roots stack, stack pointer, and catch exception pointer */
-L *stk[S],**sp = stk,**xp = stk;
+L *stk[S],**sp,**xp;
 /* memory management with ref[] array using free and SCC marker bits */
 const I FREE = ~((I)~0UL>>1),MARK = FREE,SCC = MARK>>1;
 /* lowest pointer to allocated cells in memory */
@@ -164,7 +164,7 @@ void collect(L x) {
 /* garbage collect: if x is a pair then collect pair x by decrementing its ref count, deleting it if count drops to 0 */
 L gc(L x) { if (T(x) == CONS || T(x) == CLOS || T(x) == MACR) collect(x); return x; }
 /* register x as a root on the stack with initial value y to collect with rg() or deregister with rr() */
-L rc(L *x,L y) { *x = y; *sp = x,++sp; return y; }      /* GCC incorrectly warns about *sp++ = x dangling pointer */
+L rc(L *x,L y) { return *(*sp++ = x) = y; }
 /* remove k registrations from the stack and garbage collect them */
 void rg(I k) { while (k--) gc(**--sp); }
 /* remove k registrations from the stack without garbage collecting them */
@@ -293,6 +293,7 @@ void sweep() {
  I i; for (hp = 0,i = 0; i < N; ++i) if (ref[i/2] && T(cell[i]) == ATOM && ord(cell[i]) > hp) hp = ord(cell[i]);
  if (hp) hp += strlen(A+hp)+1;
  for (fp = 0,lp = N-2,fn = 1,i = 2; i < N; i += 2) if (ref[i/2]) lomem(i); else del(i);
+ xp = sp = stk;                                         /* clear stack pointers */
 }
 /* rebuild memory to retain the global environment env and delete everything else */
 void rebuild() {
@@ -315,7 +316,6 @@ void rebuild() {
  }
 #endif
  if (k < fn) printf("\ncollected %u unused cells",2*(fn-k));
- xp = sp = stk;                                         /* clear stack pointers */
 }
 
 /* detect SCC from origin cell[i] while visiting x, ignore paths to cell[k] */
@@ -375,7 +375,7 @@ I isarg(L *t,L *e,I *a,L *x) {
 }
 
 /* section 6 lisp primitives (optimized with evarg per section 16.4) */
-L f_eval(L t,L *e) { I a = 0; L x,y = eval(rc(&x,evarg(&t,e,&a)),*e); rg(1); return y; }
+L f_eval(L t,L *e) { I a = 0; L x,y = eval(rc(&x,evarg(&t,e,&a)),*e); rr(1); gc(x); return y; }
 L f_quote(L t,L *_) { return dup(car(t)); }
 L f_cons(L t,L *e) { I a = 0; L x,p; rc(&x,evarg(&t,e,&a)); p = cons(x,evarg(&t,e,&a)); rr(1); return p; }
 L f_car(L t,L *e) { I a = 0; L x = evarg(&t,e,&a),y = dup(car(x)); gc(x); return y; }
@@ -476,14 +476,14 @@ L f_setcar(L t,L *e) {
  I a = 0; L x,p,z;
  rc(&p,evarg(&t,e,&a));
  if (T(p) != CONS) err(1,p);
- x = dup(evarg(&t,e,&a)); z = CAR(p); CAR(p) = x; gc(z); rg(1);
+ x = dup(evarg(&t,e,&a)); z = CAR(p); CAR(p) = x; gc(z); rr(1); gc(p);
  return x;
 }
 L f_setcdr(L t,L *e) {
  I a = 0; L x,p,z;
  rc(&p,evarg(&t,e,&a));
  if (T(p) != CONS) err(1,p);
- x = dup(evarg(&t,e,&a)); z = CDR(p); CDR(p) = x; gc(z); rg(1);
+ x = dup(evarg(&t,e,&a)); z = CDR(p); CDR(p) = x; gc(z); rr(1); gc(p);
  return x;
 }
 L f_macro(L t,L *_) { return macro(dup(car(t)),dup(opt(t))); }
@@ -499,7 +499,7 @@ L f_atomize(L t,L *e) {
  k = atomize(s,NULL);                           /* the atom string length k, to hold atomized list of arguments */
  if (hp+k+17 > lp<<3) err(4,nil);               /* ERR 4 if the heap space is not large enough */
  atomize(s,A+hp);                               /* store the atomized arguments on the heap */
- rg(1);
+ rr(1); gc(s);
  return atom(A+hp);                             /* this requires memmove() instead of strcpy() in atom() */
 }
 
@@ -622,7 +622,7 @@ L f_append(L t,L *e) {
  for (rc(&y,nil),rc(p,nil); isarg(&t,e,&a,&x) && !not(t); )
   for (gc(y),y = x; !not(x); x = cdr(x)) p = &CDR(*p = cons(dup(car(x)),nil));
  *p = x;
- rr(1); rg(1);
+ rr(2); gc(y);
  return s;
 }
 
@@ -657,15 +657,15 @@ L f_last(L t,L *e) {
  n = isarg(&t,e,&a,&y) ? (int)num(gc(y)) : 1;
  for (t = s = x; T(t) == CONS; t = CDR(t)) if (n < 1) s = CDR(s); else --n;
  s = dup(s);
- rg(1);
+ rr(1); gc(x);
  return s;
 }
 
 /* ++ new: (reverse t) returns reversed copy of list t */
 L f_reverse(L t,L *e) {
  I a = 0; L x,s = nil;
- for (rc(&x,evarg(&t,e,&a)),t = x; T(t) == CONS; t = CDR(t)) s = cons(dup(CAR(t)),s);
- rg(1);
+ for (rc(&x,evarg(&t,e,&a)),t = x; T(t) == CONS; t = CDR(t)) s = cons(CAR(t),s);
+ rr(1); gc(x);
  return s;
 }
 
@@ -706,7 +706,7 @@ L f_equal(L t,L *e) {
  rc(&x,evarg(&t,e,&a));
  y = evarg(&t,e,&a);
  z = equal(x,y) ? tru : nil;
- gc(y); rg(1);
+ gc(y); rr(1); gc(x);
  return z;
 }
 
@@ -717,7 +717,7 @@ L f_member(L t,L *e) {
  s = t = evarg(&t,e,&a);
  while (T(t) == CONS && !equal(x,CAR(t))) t = CDR(t);
  t = dup(t);
- gc(s); rg(1);
+ gc(s); rr(1); gc(x);
  return t;
 }
 
@@ -726,7 +726,7 @@ L f_copylist(L t,L *e) {
  I a = 0; L x,s,*p = &s;
  for (t = rc(&x,evarg(&t,e,&a)); T(t) == CONS; t = CDR(t)) p = &CDR(*p = cons(CAR(t),nil));
  *p = t;
- rg(1);
+ rr(1); gc(x);
  return s;
 }
 
