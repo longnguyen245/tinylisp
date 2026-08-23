@@ -34,4 +34,12 @@ Do you intend to add a new feature or change an existing one?
 
 Contributions are covered under the [BSD-3 license](LICENSE.txt).
 
+Authenticity: no AI was used in the creation of the "Lisp in 99 lines of C and
+how to write one yourself" article and source code.  Contributions must be
+authored by the submitter, with a few exceptions such as porting changes from
+another fork while maintaining attributions.  Contents sourced from AI tools,
+such as LLMs, including but not limited to documentation files, source code,
+configuration scrips, issue and PR descriptions, research, and testing results,
+are not permitted as they are unauthored.
+
 Thanks!
