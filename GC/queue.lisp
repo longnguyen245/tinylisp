@@ -54,14 +54,25 @@
 (queued Q)              ; ()
 
 ; queues are brilliant to rewrite functions to tail-recursive versions
-(define my-copy-list-tr
-    (lambda (t q)
-        (if t
-            (progn
-                (enqueue q (car t))
-                (my-copy-list-tr (cdr t) q))
-            (queued q))))
-(define my-copy-list (lambda (t) (my-copy-list-tr t (queue))))
-
+; (define my-copy-list-tr
+;     (lambda (t q)
+;         (if t
+;             (progn
+;                 (enqueue q (car t))
+;                 (my-copy-list-tr (cdr t) q))
+;             (queued q))))
+; (define my-copy-list (lambda (t) (my-copy-list-tr t (queue))))
+;
 ; copy a list
-(my-copy-list '(1 a (x y z)))
+; (my-copy-list '(1 a (x y z)))
+
+; flatten a list by unnesting nested lists without using append (partial tail-recursive):
+; (define flatten-tr
+;     (lambda (t q)
+;         (cond
+;             ((pair? t) (progn (flatten-tr (car t) q) (flatten-tr (cdr t) q)))
+;             ((not t)   (queued q))
+;             (#t        (progn (enqueue q t) (queued q))))))
+; (define flatten (lambda (t) (flatten-tr t (queue))))
+;
+; (flatten '(1 (2 (a b . c)) 3 (x (y)) 4 . 5))
