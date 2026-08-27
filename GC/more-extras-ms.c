@@ -343,20 +343,20 @@ L f_makelist(L t,L *e) {
 /* (rplaca p x)
    ANSI Lisp rplaca replace car of a cons pair p with x */
 L f_rplaca(L t,L *e) {
- I a = 0; L p,z;
+ I a = 0; L p;
  rc(&p,evarg(&t,e,&a));
  if (T(p) != CONS) err(1,p);
- z = CAR(p); CAR(p) = evarg(&t,e,&a);
+ CAR(p) = evarg(&t,e,&a);
  return rr(1,p);
 }
 
 /* (rplacd p x)
    ANSI Lisp rplacd replace cdr of a cons pair p with x */
 L f_rplacd(L t,L *e) {
- I a = 0; L p,z;
+ I a = 0; L p;
  rc(&p,evarg(&t,e,&a));
  if (T(p) != CONS) err(1,p);
- z = CDR(p); CDR(p) = evarg(&t,e,&a);
+ CDR(p) = evarg(&t,e,&a);
  return rr(1,p);
 }
 
