@@ -39,7 +39,7 @@ how to write one yourself" article and source code.  Contributions must be
 authored by the submitter, with a few exceptions such as porting changes from
 another fork while maintaining attributions.  Contents sourced from AI tools
 such as LLMs, including but not limited to documentation files, source code,
-configuration scrips, issue and PR descriptions, research, and testing results,
-are not permitted as they are unauthored.
+configuration scrips, issue and PR materials and source code, are not permitted
+as they are unauthored.
 
 Thanks!
