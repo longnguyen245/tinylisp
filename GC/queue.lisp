@@ -9,13 +9,19 @@
 
 (load list.lisp)
 
-; return a new empty queue (())
-(define queue (lambda () (cons () ())))
+; return a new queue containing the values specified as arguments, returns empty queue if none
+(define queue (lambda args (cons args (last args))))
 
 ; (queued q) returns () when queue q is empty, otherwise returns a list of queued values
 ; the returned list will be shared by the queue, enqueued values are also added to the list
 ; use (copy-list (queued q)) to duplicate list t from the queue without sharing
 (define queued car)
+
+; (front q) returns the value at the front of the queue q, queue must not be empty
+(define front (lambda (q) (car (car q))))
+
+; (back q) returns the value at the back of the queue q, queue must not be empty
+(define back (lambda (q) (car (cdr q))))
 
 ; push value x to the back of the queue q, updating q, returns a singleton list (x)
 (define enqueue
@@ -38,17 +44,19 @@
 
 ; convert list to queue in O(1) time, list will be shared by the queue, enqueued values are also added to the list
 ; use (list2queue (copy-list t)) to duplicate list t as a new queue without sharing
-(define list2queue
-    (lambda (t)
-       (if t
-           (cons t (last t))
-           (queue))))
+(define list2queue (lambda (t) (queue . t)))
 
 ; example
 (define Q (queue))
 (enqueue Q 'hello)
 (enqueue Q 'world)
 (queued Q)              ; (hello world)
+(dequeue Q)             ; hello
+(dequeue Q)             ; world
+(queued Q)              ; ()
+(setq Q (queue 'hello 'world))
+(front Q)               ; hello
+(back Q)                ; world
 (dequeue Q)             ; hello
 (dequeue Q)             ; world
 (queued Q)              ; ()
